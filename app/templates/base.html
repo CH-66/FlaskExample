@@ -1,5 +1,6 @@
 {% extends 'bootstrap/base.html' %}
-
+{{ moment.include_moment() }}
+{{ moment.locale('zh-cn') }}
 {% block title %}
     {% if title %}{{ title }} - Microblog{% else %}Welcome to Microblog{% endif %}
 {% endblock %}

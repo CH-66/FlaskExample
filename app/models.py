@@ -24,7 +24,7 @@ class User(UserMixin,db.Model):
     email = db.Column(db.String(64), unique=True, index=True)
     about_me = db.Column(db.String(128))
     last_seen = db.Column(db.DateTime, default=datetime.utcnow)
-
+    posts = db.relationship('Post', backref='author', lazy='dynamic')
     followed = db.relationship(
         'User', secondary=followers,
         primaryjoin=(followers.c.follower_id == id),
@@ -77,21 +77,14 @@ class User(UserMixin,db.Model):
 
     def __repr__(self):
         return '<User %r>' % self.username
-# @login.user_loader
-# def load_user(id):
-#     return User.query.get(int(id))
 
 class Post(db.Model):
     __tablename__ = 'post'
     id = db.Column(db.Integer, primary_key=True)
-    # title = db.Column(db.String(64), unique=True)
-    # slug = db.Column(db.String(64), unique=True)
     body = db.Column(db.Text)
-    # body_html = db.Column(db.Text)
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
 
 
     def __repr__(self):
         return '<Post {}>'.format(self.body)
-

@@ -3,21 +3,25 @@ from flask import render_template, flash, redirect, url_for, request
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 
-from app.auth.forms import LoginForm,RegistrationForm
-from app.models import User,db
+from app.auth.forms import LoginForm, RegistrationForm, EditUserForm, PostForm
+from app.models import User, db, Post
 from flask import Blueprint
 
 auth = Blueprint('auth', __name__)
 
 
-@auth.route("/index", methods=["GET"])
+@auth.route("/index", methods=["GET","POST"])
 @login_required
 def index():
-    post={
-        'author': {'username': 'zy'},
-        'body': 'Beautiful day in Portland!'
-    }
-    return render_template('index.html', title='Home', post=post)
+    form = PostForm()
+    if form.validate_on_submit():
+        post = User(body=form.body.data)
+        db.session.add(post)
+        db.session.commit()
+        flash('文章提交成功！')
+        return redirect(url_for('auth.index'))
+    posts = Post.query.order_by(Post.timestamp.desc()).all()
+    return render_template('index.html', title='Home', posts=posts)
 
 
 @auth.route("/login", methods=["GET", "POST"])
@@ -62,9 +66,19 @@ def register():
 @login_required
 def user(username):
     user = User.query.filter_by(username=username).first_or_404()
-    posts = [
-        {'author': user, 'body': 'Test post #1'},
-        {'author': user, 'body': 'Test post #2'}
-    ]
+    posts = user.posts.order_by(Post.timestamp.desc()).all()
     return render_template('user.html', user=user, posts=posts)
+
+@auth.route("/edit_pwd", methods=["GET", "POST"])
+@login_required
+def edit_pwd():
+    form = EditUserForm()
+    if form.validate_on_submit():
+        user = User.query.filter_by(username=current_user.username).first()
+        user.set_password(form.new_password.data)
+        db.session.commit()
+        flash('密码修改成功！')
+        logout_user()
+        return redirect(url_for('auth.login'))
+    return render_template('edit_pwd.html', title='Edit_pwd', form=form)
 

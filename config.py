@@ -7,6 +7,7 @@ class Config:
     # 设置数据发生变更之后是否发送信号给应用
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'mysql+pymysql://root:123456@localhost/zytest'
+    POSTS_PER_PAGE = 3
 
 class DevelopmentConfig(Config):
     DEBUG = True

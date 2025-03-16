@@ -1,11 +1,13 @@
 from datetime import datetime, UTC
-from flask import render_template, flash, redirect, url_for, request
+from flask import render_template, flash, redirect, url_for, request, current_app
 from flask_login import current_user, login_user, logout_user, login_required
 from werkzeug.urls import url_parse
 
 from app.auth.forms import LoginForm, RegistrationForm, EditUserForm, PostForm
 from app.models import User, db, Post
 from flask import Blueprint
+
+from config import Config
 
 auth = Blueprint('auth', __name__)
 
@@ -20,8 +22,12 @@ def index():
         db.session.commit()
         flash('文章提交成功！')
         return redirect(url_for('auth.index'))
-    posts = Post.query.order_by(Post.timestamp.desc()).all()
-    return render_template('index.html', title='Home', posts=posts,form=form)
+    # posts = Post.query.order_by(Post.timestamp.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    posts = Post.query.order_by(Post.timestamp.desc()).paginate(page = page, per_page = current_app.config['POSTS_PER_PAGE'], error_out = False)
+    next_url = url_for('auth.index',page = posts.next_num) if posts.has_next else None
+    prev_url = url_for('auth.index',page = posts.prev_num) if posts.has_prev else None
+    return render_template('index.html', title='Home', posts=posts.items,form=form,next_url=next_url,prev_url=prev_url)
 
 
 @auth.route("/login", methods=["GET", "POST"])

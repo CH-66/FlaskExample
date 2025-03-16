@@ -1,13 +1,27 @@
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
+
 from . import api_bp as api
 from flask import jsonify, request, url_for
 from app.models import User, db
 from .errors import bad_request
 
-
+@api.route('/users/login', methods=['POST'])
+def login():
+    data = request.get_json() or {}
+    username = data.get('username')
+    password = data.get('password')
+    user = User.query.filter_by(username=username).first()
+    if user and user.check_password(password):
+        access_token = create_access_token(identity=user.id)
+        return jsonify(access_token=access_token)
+    return bad_request('invalid username or password')
 @api.route('/users/<int:id>',methods=['GET'])
+@jwt_required()
 def get_user(id):
+    user_id = get_jwt_identity()
+    if user_id != id:
+        return bad_request('you can only access your own information')
     return jsonify(User.query.get_or_404(id).to_dict())
-    pass
 
 @api.route('/users',methods=['GET'])
 def get_users():
@@ -35,6 +49,7 @@ def create_user():
 
 
 @api.route('/users/<int:id>',methods=['PUT'])
+@jwt_required()
 def update_user(id):
     user = User.query.get_or_404(id)
     data = request.get_json() or {}

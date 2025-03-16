@@ -3,7 +3,8 @@ import os
 from datetime import datetime, UTC
 from logging.handlers import RotatingFileHandler
 from flask_bootstrap import Bootstrap
-from flask_moment import Moment, moment
+from flask_jwt_extended import JWTManager
+from flask_moment import Moment
 from flask import Flask
 from flask_migrate import Migrate
 from flask_login import LoginManager, current_user
@@ -35,9 +36,16 @@ def create_app(config_name='development'):
     # 注册主蓝图
     init_main(app)
 
+    #注册API蓝图
+    from app.api_1_0 import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api/v1.0')
+
     # 初始化数据库迁移
     migrate = Migrate(app, db)
+    # 初始化moment
     moment = Moment(app)
+    # 初始化jwt
+    jwt = JWTManager(app)
     # 添加用户加载函数
     # 在每次请求时，Flask-Login 都需要知道当前用户是谁。
     # 为此，它会自动调用通过 @login.user_loader 装饰器注册的用户加载函数。

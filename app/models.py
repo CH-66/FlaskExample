@@ -1,10 +1,38 @@
 from datetime import datetime
+
+from flask import url_for
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from hashlib import md5
 db = SQLAlchemy()
 # from app import login
+
+
+
+class PaginatedAPIMixin(object):
+    @staticmethod
+    def to_collection_dict(query, page, per_page, endpoint, **kwargs):
+        resources = query.paginate(page = page, per_page = per_page, error_out = False)
+        data = {
+            'items': [item.to_dict() for item in resources.items],
+            '_meta': {
+                'page': page,
+                'per_page': per_page,
+                'total_pages': resources.pages,
+                'total_items': resources.total
+            },
+            '_links': {
+                'self': url_for(endpoint, page=page, per_page=per_page,
+                                **kwargs),
+                'next': url_for(endpoint, page=page + 1, per_page=per_page,
+                                **kwargs) if resources.has_next else None,
+                'prev': url_for(endpoint, page=page - 1, per_page=per_page,
+                                **kwargs) if resources.has_prev else None
+            }
+        }
+        return data
+
 """
 Flask-SQLAlchemy提供了两种方式来定义模型。
 第一种是使用类来定义模型，第二种是使用db.Model的子类来定义模型。
@@ -12,11 +40,13 @@ Flask-SQLAlchemy提供了两种方式来定义模型。
 """
 Flask-Login提供了一个叫做UserMixin的mixin类来将它们归纳其中。
 """
+
 followers = db.Table('followers',
     db.Column('follower_id', db.Integer, db.ForeignKey('user.id')),
     db.Column('followed_id', db.Integer, db.ForeignKey('user.id'))
 )
-class User(UserMixin,db.Model):
+
+class User(UserMixin,db.Model, PaginatedAPIMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, index=True)
@@ -75,6 +105,32 @@ class User(UserMixin,db.Model):
         return self.followed.filter(
             followers.c.followed_id == user.id).count() > 0
 
+    def to_dict(self):
+        data = {
+            'id': self.id,
+            'username': self.username,
+            'email': self.email,
+            'about_me': self.about_me,
+            'last_seen': self.last_seen,
+            'post_count': self.posts.count(),
+            'follower_count': self.followers.count(),
+            'followed_count': self.followed.count(),
+            '_links': {
+                'self': url_for('api.get_user', id=self.id),
+                'avatar': self.avatar(128)
+
+            }
+        }
+        return data
+    def from_dict(self, data, new_user=False):
+        for field in ['username', 'email', 'about_me']:
+            if field in data:
+                setattr(self, field, data[field])
+        if new_user and 'password' in data:
+            self.set_password(data['password'])
+    def save(self):
+        db.session.add(self)
+        db.session.commit()
     def __repr__(self):
         return '<User %r>' % self.username
 
